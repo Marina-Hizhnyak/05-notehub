@@ -1,14 +1,15 @@
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createNote } from '../../services/noteService';
 import css from './NoteForm.module.css';
 import type { NoteTag } from '../../types/note';
 
 interface NoteFormProps {
   onCancel: () => void;
-  onCreate: () => void;
+  onCreate?: () => void; 
 }
-// 1. Валидация с Yup
+
 const validationSchema = Yup.object({
   title: Yup.string().min(3).max(50).required('Required'),
   content: Yup.string().max(500, 'Max 500 characters'),
@@ -17,30 +18,36 @@ const validationSchema = Yup.object({
     .required('Required'),
 });
 
-// 2. Значения формы
-const initialValues: {
-  title: string;
-  content: string;
-  tag: NoteTag;
-} = {
-  title: '',
-  content: '',
-  tag: 'Todo',
-};
+export default function NoteForm({ onCancel }: NoteFormProps) {
+  const queryClient = useQueryClient();
 
-export default function NoteForm({ onCancel, onCreate }: NoteFormProps) {
+  const mutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      onCancel(); 
+    },
+    onError: (error) => {
+      console.error('Create note failed:', error);
+    },
+  });
+
+  const initialValues = {
+    title: '',
+    content: '',
+    tag: 'Todo' as NoteTag,
+  };
+
   return (
     <Formik
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={async (values, actions) => {
-        try {
-          await createNote(values);
-          actions.resetForm();
-          onCreate(); 
-        } catch (error) {
-          console.error('Create note failed:', error);
-        }
+      onSubmit={(values, actions) => {
+        mutation.mutate(values, {
+          onSettled: () => {
+            actions.resetForm();
+          },
+        });
       }}
     >
       {({ isSubmitting }) => (
@@ -76,10 +83,18 @@ export default function NoteForm({ onCancel, onCreate }: NoteFormProps) {
           </div>
 
           <div className={css.actions}>
-            <button type="button" className={css.cancelButton} onClick={onCancel}>
+            <button
+              type="button"
+              className={css.cancelButton}
+              onClick={onCancel}
+            >
               Cancel
             </button>
-            <button type="submit" className={css.submitButton} disabled={isSubmitting}>
+            <button
+              type="submit"
+              className={css.submitButton}
+              disabled={isSubmitting || mutation.isPending}
+            >
               Create note
             </button>
           </div>
@@ -88,4 +103,5 @@ export default function NoteForm({ onCancel, onCreate }: NoteFormProps) {
     </Formik>
   );
 }
+
 
