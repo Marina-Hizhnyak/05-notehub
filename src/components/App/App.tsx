@@ -5,8 +5,8 @@ import Pagination from '../Pagination/Pagination';
 import Modal from '../Modal/Modal';
 import NoteForm from '../NoteForm/NoteForm';
 import NoteList from '../NoteList/NoteList';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchNotes, deleteNote } from '../../services/noteService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchNotes } from '../../services/noteService';
 import type { FetchNotesResponse } from '../../services/noteService';
 import { useDebounce } from 'use-debounce';
 
@@ -18,33 +18,27 @@ export default function App() {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery<FetchNotesResponse, Error>({
     queryKey: ['notes', debouncedSearch, currentPage],
-    queryFn: () =>
+    queryFn: (): Promise<FetchNotesResponse> =>
       fetchNotes({
         page: currentPage,
         perPage: 12,
         search: debouncedSearch,
       }),
-    placeholderData: {
-      notes: [],
-      page: 1,
-      perPage: 12,
-      totalPages: 1,
-      totalItems: 0,
-    },
+    keepPreviousData: true,
   });
+  
+  
+  
 
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch]);
-
-  const { mutate: handleDelete, isPending: isDeleting } = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-  });
 
   const handleCreate = () => {
     queryClient.invalidateQueries({ queryKey: ['notes'] });
@@ -56,7 +50,7 @@ export default function App() {
       <header className={css.toolbar}>
         <SearchBox value={search} onChange={setSearch} />
 
-        {data!.totalPages > 1 && (
+        {data?.totalPages > 1 && (
         <Pagination
           currentPage={currentPage}
           totalPages={data!.totalPages}
@@ -72,15 +66,7 @@ export default function App() {
       {isLoading && <p>Loading...</p>}
       {isError && <p>Failed to load notes</p>}
 
-      {data && data.notes.length > 0 ? (
-        <NoteList
-          notes={data.notes}
-          onDelete={handleDelete}
-          isDeleting={isDeleting}
-        />
-      ) : (
-        <p>No notes yet</p>
-      )}
+      {data?.notes.length > 0 ? <NoteList notes={data.notes} /> : <p>No notes found</p>}
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>

@@ -7,9 +7,7 @@ interface ModalProps {
   onClose: () => void;
 }
 
-const modalRoot = document.querySelector('#modal-root') as HTMLElement;
-
-function Modal({ children, onClose }: ModalProps) {
+export default function Modal({ children, onClose }: ModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
@@ -37,8 +35,7 @@ function Modal({ children, onClose }: ModalProps) {
     <div className={css.backdrop} role="dialog" aria-modal="true" onClick={handleBackdropClick}>
       <div className={css.modal}>{children}</div>
     </div>,
-    modalRoot
+    document.body
   );
 }
 
-export default Modal;
